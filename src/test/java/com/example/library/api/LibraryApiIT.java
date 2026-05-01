@@ -255,10 +255,11 @@ class LibraryApiIT extends AbstractIntegrationTest {
         void shouldDeactivateMember() {
             Member member = createTestMember("Daniel Davis", "daniel.davis@test.com", MembershipType.PREMIUM);
 
-            restTemplate.delete(baseUrl + "/members/" + member.getId());
+            ResponseEntity<Void> deleteResponse = restTemplate.exchange(baseUrl + "/members/" + member.getId(), HttpMethod.DELETE, null, Void.class);
+
+            assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
 
             ResponseEntity<Map> response = restTemplate.getForEntity(baseUrl + "/members/" + member.getId(), Map.class);
-
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody()).containsEntry("active", false);
@@ -296,8 +297,10 @@ class LibraryApiIT extends AbstractIntegrationTest {
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody()).isNotNull();
-
             assertThat(response.getBody()).hasSize(2);
+
+            List<Map<String, Object>> returnedBooks = (List<Map<String, Object>>) response.getBody();
+            assertThat(returnedBooks).extracting(bookMap -> bookMap.get("title")).containsExactlyInAnyOrder("Learning Spring Boot", "Spring Microservices in Action");
         }
 
         @Test
@@ -308,21 +311,27 @@ class LibraryApiIT extends AbstractIntegrationTest {
             Book book2 = createTestBook("978-20", "Second Book", "Author Two");
 
             BorrowRequest borrowRequest1 = new BorrowRequest(book1.getId(), member.getId());
-            restTemplate.postForEntity(baseUrl + "/borrows", borrowRequest1, Map.class);
+            ResponseEntity<Map> borrow1Response = restTemplate.postForEntity(baseUrl + "/borrows", borrowRequest1, Map.class);
+            assertThat(borrow1Response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
             BorrowRequest borrowRequest2 = new BorrowRequest(book2.getId(), member.getId());
             ResponseEntity<Map> borrow2Response = restTemplate.postForEntity(baseUrl + "/borrows", borrowRequest2, Map.class);
+            assertThat(borrow2Response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+            assertThat(borrow2Response.getBody()).isNotNull();
 
             Number borrow2Id = (Number) borrow2Response.getBody().get("id");
 
-            restTemplate.postForEntity(baseUrl + "/borrows/" + borrow2Id.longValue() + "/return", null, Map.class);
+            ResponseEntity<Map> returnResponse = restTemplate.postForEntity(baseUrl + "/borrows/" + borrow2Id.longValue() + "/return", null, Map.class);
+            assertThat(returnResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
             ResponseEntity<List> response = restTemplate.getForEntity(baseUrl + "/borrows/member/" + member.getId() + "/active", List.class);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody()).isNotNull();
-
             assertThat(response.getBody()).hasSize(1);
+
+            List<Map<String, Object>> activeBorrows = (List<Map<String, Object>>) response.getBody();
+            assertThat(activeBorrows.get(0)).containsEntry("bookTitle", "First Book");
         }
     }
 }
