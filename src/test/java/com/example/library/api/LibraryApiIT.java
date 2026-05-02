@@ -253,7 +253,7 @@ class LibraryApiIT extends AbstractIntegrationTest {
 
             BorrowRequest borrowRequest = new BorrowRequest(book.getId(), non_existentMemberId);
 
-            ResponseEntity<Map> response = restTemplate.postForEntity(baseUrl + "/borrow" , borrowRequest , Map.class);
+            ResponseEntity<Map> response = restTemplate.postForEntity(baseUrl + "/borrows" , borrowRequest , Map.class);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         }
@@ -262,13 +262,13 @@ class LibraryApiIT extends AbstractIntegrationTest {
         @DisplayName("should return 404 when book does not exist")
         void shouldReturn404_WhenBookNotFound() {
             // TODO: Try to borrow a non-existent bookId
-            Member member = new Member("Alex" , " alex@test.com", MembershipType.STANDARD);
+            Member member = createTestMember("Alex", "alex@test.com", MembershipType.STANDARD);
 
             long non_existenceBookId = 9898989;
 
             BorrowRequest borrowRequest = new BorrowRequest(non_existenceBookId, member.getId());
 
-            ResponseEntity<Map> response = restTemplate.postForEntity(baseUrl + "/borrow" , borrowRequest , Map.class);
+            ResponseEntity<Map> response = restTemplate.postForEntity(baseUrl + "/borrows" , borrowRequest , Map.class);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         }
