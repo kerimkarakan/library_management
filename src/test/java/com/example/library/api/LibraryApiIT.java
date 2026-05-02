@@ -14,6 +14,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.*;
 
 import java.util.Map;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -236,27 +237,48 @@ class LibraryApiIT extends AbstractIntegrationTest {
         @Test
         @DisplayName("should create a member and return 201")
         void shouldCreateMember() {
-            // TODO: POST a new member to /api/members
-            //       Verify 201 status and response body
-            fail("Not implemented yet");
+            Member newMember = new Member("Michael Johnson", "michael.johnson@example.com", MembershipType.STANDARD);
+
+            ResponseEntity<Map> response = restTemplate.postForEntity(baseUrl + "/members", newMember, Map.class);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody()).containsEntry("name", "Michael Johnson");
+            assertThat(response.getBody()).containsEntry("email", "michael.johnson@example.com");
+            assertThat(response.getBody()).containsEntry("membershipType", "STANDARD");
+            assertThat(response.getBody()).containsEntry("active", true);
+            assertThat(response.getBody().get("id")).isNotNull();
         }
 
         @Test
         @DisplayName("should deactivate a member via DELETE")
         void shouldDeactivateMember() {
-            // TODO:
-            // 1. Create a member
-            // 2. DELETE /api/members/{id}
-            // 3. GET /api/members/{id} and verify active = false
-            fail("Not implemented yet");
+            Member member = createTestMember("Daniel Davis", "daniel.davis@test.com", MembershipType.PREMIUM);
+
+            ResponseEntity<Void> deleteResponse = restTemplate.exchange(baseUrl + "/members/" + member.getId(), HttpMethod.DELETE, null, Void.class);
+
+            assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+            ResponseEntity<Map> response = restTemplate.getForEntity(baseUrl + "/members/" + member.getId(), Map.class);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody()).containsEntry("active", false);
         }
 
         @Test
         @DisplayName("should return 400 when creating member with invalid email")
         void shouldReturn400_WhenInvalidEmail() {
-            // TODO: POST a member with an invalid email
-            //       Verify 400 BAD REQUEST
-            fail("Not implemented yet");
+            Member invalidMember = new Member("Bad Email Bob", "this-is-not-an-email", MembershipType.STANDARD);
+
+            ResponseEntity<Map> response = restTemplate.postForEntity(baseUrl + "/members", invalidMember, Map.class);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody()).containsKey("errors");
+
+            Map<String, String> errors = (Map<String, String>) response.getBody().get("errors");
+            assertThat(errors).containsEntry("email", "Valid email is required");
         }
     }
 
@@ -267,19 +289,49 @@ class LibraryApiIT extends AbstractIntegrationTest {
         @Test
         @DisplayName("should search books by keyword via GET /api/books/search?keyword=...")
         void shouldSearchBooks() {
-            // TODO: Create several books, search by keyword, verify results
-            fail("Not implemented yet");
+            createTestBook("978-100", "Learning Spring Boot", "Greg L. Turnquist");
+            createTestBook("978-200", "Clean Code", "Robert C. Martin");
+            createTestBook("978-300", "Spring Microservices in Action", "John Carnell");
+
+            ResponseEntity<List> response = restTemplate.getForEntity(baseUrl + "/books/search?keyword=Spring", List.class);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody()).hasSize(2);
+
+            List<Map<String, Object>> returnedBooks = (List<Map<String, Object>>) response.getBody();
+            assertThat(returnedBooks).extracting(bookMap -> bookMap.get("title")).containsExactlyInAnyOrder("Learning Spring Boot", "Spring Microservices in Action");
         }
 
         @Test
         @DisplayName("should get active borrows for a member")
         void shouldGetActiveBorrows() {
-            // TODO:
-            // 1. Create a member and 2 books
-            // 2. Borrow both books
-            // 3. Return one of them
-            // 4. GET /api/borrows/member/{id}/active — should return only 1
-            fail("Not implemented yet");
+            Member member = createTestMember("Charlie", "charlie@example.com", MembershipType.STANDARD);
+            Book book1 = createTestBook("978-10", "First Book", "Author One");
+            Book book2 = createTestBook("978-20", "Second Book", "Author Two");
+
+            BorrowRequest borrowRequest1 = new BorrowRequest(book1.getId(), member.getId());
+            ResponseEntity<Map> borrow1Response = restTemplate.postForEntity(baseUrl + "/borrows", borrowRequest1, Map.class);
+            assertThat(borrow1Response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+            BorrowRequest borrowRequest2 = new BorrowRequest(book2.getId(), member.getId());
+            ResponseEntity<Map> borrow2Response = restTemplate.postForEntity(baseUrl + "/borrows", borrowRequest2, Map.class);
+            assertThat(borrow2Response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+            assertThat(borrow2Response.getBody()).isNotNull();
+
+            Number borrow2Id = (Number) borrow2Response.getBody().get("id");
+
+            ResponseEntity<Map> returnResponse = restTemplate.postForEntity(baseUrl + "/borrows/" + borrow2Id.longValue() + "/return", null, Map.class);
+            assertThat(returnResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+            ResponseEntity<List> response = restTemplate.getForEntity(baseUrl + "/borrows/member/" + member.getId() + "/active", List.class);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody()).hasSize(1);
+
+            List<Map<String, Object>> activeBorrows = (List<Map<String, Object>>) response.getBody();
+            assertThat(activeBorrows.get(0)).containsEntry("bookTitle", "First Book");
         }
     }
 }
