@@ -195,22 +195,18 @@ class LibraryApiIT extends AbstractIntegrationTest {
         @Test
         @DisplayName("should return 409 when borrowing limit exceeded")
         void shouldReturn409_WhenBorrowLimitExceeded() {
-            // 1. Create a STUDENT member (limit = 2 books)
             Member member = createTestMember("Elena", "elena@test.com", MembershipType.STUDENT);
 
-            // 2. Create 3 different books
             Book book1 = createTestBook("960-1", "Test Book 1", "Test Author1");
             Book book2 = createTestBook("962-1", "Test Book 2", "Test Author2");
             Book book3 = createTestBook("964-1", "Test Book 3", "Test Author3");
 
-            // 3. Borrow 2 books successfully
             BorrowRequest borrowRequest1 = new BorrowRequest(book1.getId(), member.getId());
             BorrowRequest borrowRequest2 = new BorrowRequest(book2.getId(), member.getId());
 
             restTemplate.postForEntity(baseUrl +"/borrows" , borrowRequest1, Map.class);
             restTemplate.postForEntity(baseUrl + "/borrows", borrowRequest2, Map.class);
 
-            // 4. Try to borrow a 3rd book — should return 409 CONFLICT
             BorrowRequest borrowRequest3 = new BorrowRequest(book3.getId(), member.getId());
 
             ResponseEntity<Map> response = restTemplate.postForEntity(baseUrl + "/borrows", borrowRequest3, Map.class);
@@ -223,18 +219,14 @@ class LibraryApiIT extends AbstractIntegrationTest {
         @Test
         @DisplayName("should return 409 when no copies available")
         void shouldReturn409_WhenNoCopiesAvailable() {
-            // 1. Create a book with totalCopies = 1
             Book uniqueBook = bookRepository.save(new Book("999-9", "Only One Copy", "Author XYZ", 1, Genre.TECHNOLOGY));
 
-            // 2. Create 2 members
             Member member1 = createTestMember("Mem1","mem1@test.com",MembershipType.STANDARD);
             Member member2 = createTestMember("Mem2","mem2@test.com",MembershipType.STANDARD);
 
-            // 3. First member borrows the book successfully
             BorrowRequest borrowRequest1 = new BorrowRequest(uniqueBook.getId(), member1.getId());
             restTemplate.postForEntity(baseUrl+"/borrows", borrowRequest1 , Map.class);
 
-            // 4. Second member tries to borrow — should return 409
             BorrowRequest borrowRequest2 = new BorrowRequest(uniqueBook.getId(), member2.getId());
 
             ResponseEntity<Map> response = restTemplate.postForEntity(baseUrl+"/borrows", borrowRequest2,Map.class);
@@ -245,13 +237,11 @@ class LibraryApiIT extends AbstractIntegrationTest {
         @Test
         @DisplayName("should return 404 when member does not exist")
         void shouldReturn404_WhenMemberNotFound() {
-            // TODO: Try to borrow with a non-existent memberId
             Book book = createTestBook("911-7" , "Just Book", "Random Author");
 
-            //random memb_id
-            long non_existentMemberId = 999999;
+            long nonExistentMemberId = 999999;
 
-            BorrowRequest borrowRequest = new BorrowRequest(book.getId(), non_existentMemberId);
+            BorrowRequest borrowRequest = new BorrowRequest(book.getId(), nonExistentMemberId);
 
             ResponseEntity<Map> response = restTemplate.postForEntity(baseUrl + "/borrows" , borrowRequest , Map.class);
 
@@ -261,12 +251,11 @@ class LibraryApiIT extends AbstractIntegrationTest {
         @Test
         @DisplayName("should return 404 when book does not exist")
         void shouldReturn404_WhenBookNotFound() {
-            // TODO: Try to borrow a non-existent bookId
             Member member = createTestMember("Alex", "alex@test.com", MembershipType.STANDARD);
 
-            long non_existenceBookId = 9898989;
+            long nonExistentBookId = 9898989;
 
-            BorrowRequest borrowRequest = new BorrowRequest(non_existenceBookId, member.getId());
+            BorrowRequest borrowRequest = new BorrowRequest(nonExistentBookId, member.getId());
 
             ResponseEntity<Map> response = restTemplate.postForEntity(baseUrl + "/borrows" , borrowRequest , Map.class);
 
