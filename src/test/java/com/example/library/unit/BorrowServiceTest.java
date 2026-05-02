@@ -152,7 +152,7 @@ class BorrowServiceTest {
         @Test
         @DisplayName("should throw when inactive member tries to borrow")
         void shouldThrow_WhenMemberInactive() {
-            // Arrange: Üyeyi inaktif yapıyoruz
+            // Arrange: make the member inactive
             sampleMember.setActive(false);
 
             when(memberRepository.findById(1L)).thenReturn(Optional.of(sampleMember));
