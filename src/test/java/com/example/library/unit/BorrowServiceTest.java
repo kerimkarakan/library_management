@@ -174,7 +174,8 @@ class BorrowServiceTest {
             when(borrowRecordRepository.countActiveBorrowsByMember(1L)).thenReturn(0);
             when(borrowRecordRepository.existsByBookIdAndMemberIdAndStatus(1L, 1L, BorrowStatus.BORROWED))
                     .thenReturn(false);
-            when(borrowRecordRepository.save(any(BorrowRecord.class))).thenReturn(new BorrowRecord());
+            when(borrowRecordRepository.save(any(BorrowRecord.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
 
             borrowService.borrowBook(1L, 1L);
 
