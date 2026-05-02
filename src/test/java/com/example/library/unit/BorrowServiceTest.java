@@ -163,29 +163,82 @@ class BorrowServiceTest {
         @Test
         @DisplayName("should successfully return a borrowed book")
         void shouldReturnBook_WhenBorrowed() {
-            // TODO: Create a BorrowRecord with BORROWED status
-            //       Mock the repository to return it
-            //       Call returnBook() and verify:
-            //       - status changed to RETURNED
-            //       - returnDate is set
-            //       - available copies increased
-            fail("Not implemented yet");
+
+            BorrowRecord borrowRecord = new BorrowRecord(sampleBook, sampleMember);
+            borrowRecord.setId(1L);
+            borrowRecord.setStatus(BorrowStatus.BORROWED);
+
+            int initialCopies = sampleBook.getAvailableCopies();
+
+
+            when(borrowRecordRepository.findById(1L)).thenReturn(Optional.of(borrowRecord));
+            when(borrowRecordRepository.save(any(BorrowRecord.class))).thenReturn(borrowRecord);
+            when(bookRepository.save(any(Book.class))).thenReturn(sampleBook);
+
+
+            BorrowResponse response = borrowService.returnBook(1L);
+
+
+            assertEquals(BorrowStatus.RETURNED, borrowRecord.getStatus());
+
+
+            assertNotNull(borrowRecord.getReturnDate());
+            assertEquals(java.time.LocalDate.now(), borrowRecord.getReturnDate());
+
+
+            org.mockito.ArgumentCaptor<Book> bookCaptor = org.mockito.ArgumentCaptor.forClass(Book.class);
+            verify(bookRepository).save(bookCaptor.capture());
+
+            Book savedBook = bookCaptor.getValue();
+            assertEquals(initialCopies + 1, savedBook.getAvailableCopies(),
+                    "Available copies should increase by 1");
+
+
+            assertNotNull(response);
+            assertEquals(BorrowStatus.RETURNED, response.getStatus());
         }
 
         @Test
         @DisplayName("should throw when trying to return an already returned book")
         void shouldThrow_WhenAlreadyReturned() {
-            // TODO: Create a BorrowRecord with RETURNED status
-            //       Verify IllegalStateException is thrown
-            fail("Not implemented yet");
+
+            BorrowRecord borrowRecord = new BorrowRecord(sampleBook, sampleMember);
+            borrowRecord.setId(1L);
+            borrowRecord.setStatus(BorrowStatus.RETURNED);
+            borrowRecord.setReturnDate(java.time.LocalDate.now().minusDays(1));
+
+
+            when(borrowRecordRepository.findById(1L)).thenReturn(Optional.of(borrowRecord));
+
+
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> borrowService.returnBook(1L));
+
+
+            assertTrue(exception.getMessage().contains("already been returned"));
+
+
+            verify(borrowRecordRepository, never()).save(any());
+            verify(bookRepository, never()).save(any());
         }
 
         @Test
         @DisplayName("should throw when borrow record not found")
         void shouldThrow_WhenRecordNotFound() {
-            // TODO: Mock repository to return empty Optional
-            //       Verify IllegalStateException is thrown
-            fail("Not implemented yet");
+            // Arrange: Mock repository to return empty Optional
+            when(borrowRecordRepository.findById(99L)).thenReturn(Optional.empty());
+
+            // Act & Assert: Verify IllegalStateException is thrown
+            IllegalStateException exception = assertThrows(IllegalStateException.class,
+                    () -> borrowService.returnBook(99L));
+
+            // Verify the exception message contains the ID
+            assertTrue(exception.getMessage().contains("Borrow record not found"));
+            assertTrue(exception.getMessage().contains("99"));
+
+            // Verify that no save operation was attempted
+            verify(borrowRecordRepository, never()).save(any());
+            verify(bookRepository, never()).save(any());
         }
     }
 }
